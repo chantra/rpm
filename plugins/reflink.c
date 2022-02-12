@@ -238,6 +238,7 @@ static rpmRC reflink_fsm_file_install(rpmPlugin plugin, rpmfi fi, const char* pa
 	return RPMRC_OK;
     }
     fcr.dest_offset = 0;
+    char *suffix = strrchr(path, ';');
     if (S_ISREG(file_mode) && !(rpmfiFFlags(fi) & RPMFILE_GHOST)) {
 	rpm_ino_t inode = rpmfiFInode(fi);
 	/* check for hard link entry in table. GetEntry overwrites hlix with
@@ -247,14 +248,17 @@ static rpmRC reflink_fsm_file_install(rpmPlugin plugin, rpmfi fi, const char* pa
 	                           NULL)) {
 	    /* entry is in table, use hard link */
 	    char *fn = rpmfilesFN(state->files, hlix[0]);
-	    if (link(fn, path) != 0) {
+	    char *fnsuffix = rstrscat(NULL, fn, suffix ? suffix : "", NULL);
+	    if (link(fnsuffix, path) != 0) {
 		rpmlog(RPMLOG_ERR,
 		       _("reflink: Unable to hard link %s -> %s due to %s\n"),
 		       fn, path, strerror(errno));
 		free(fn);
+		free(fnsuffix);
 		return RPMRC_FAIL;
 	    }
 	    free(fn);
+	    free(fnsuffix);
 	    return RPMRC_PLUGIN_CONTENTS;
 	}
 	/* if we didn't hard link, then we'll track this inode as being
